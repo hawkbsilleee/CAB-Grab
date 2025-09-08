@@ -77,7 +77,7 @@ def authorize():
     login_user(user)
 
     session["email"] = email
-    return redirect(url_for("index"))
+    return redirect(url_for("landing"))
 
 @app.route("/logout")
 @login_required
@@ -88,9 +88,10 @@ def logout():
 
 # --- Routes ---
 @app.route("/")
+@app.route("/landing")
 def landing():
     if current_user.is_authenticated:
-        return redirect(url_for("index"))
+        return redirect(url_for("dashboard"))
     return render_template("landing.html")
 
 @app.route("/dashboard", methods=["GET", "POST"])
