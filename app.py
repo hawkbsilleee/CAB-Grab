@@ -169,18 +169,19 @@ def poll_loop():
                 if seats > 0 and notified == 0:
                     send_email(crn, email)
                     c.execute("UPDATE subscriptions SET notified = 1 WHERE id = ?", (sub_id,))
+                    conn.commit()   # 🔥 commit right away
                     print(f"📧 Sent alert to {email} for CRN {crn} ({seats} seats open)")
 
                 # Reset notification if seats drop back down
                 elif seats <= 0 and notified == 1:
                     c.execute("UPDATE subscriptions SET notified = 0 WHERE id = ?", (sub_id,))
+                    conn.commit()   # 🔥 commit right away
 
             except Exception as e:
                 print(f"❌ Error checking {crn}: {e}")
 
-        conn.commit()
         conn.close()
-        time.sleep(10)
+        time.sleep(300)
 
 threading.Thread(target=poll_loop, daemon=True).start()
 
