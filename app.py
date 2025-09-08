@@ -157,21 +157,30 @@ def poll_loop():
     while True:
         conn = sqlite3.connect(DB)
         c = conn.cursor()
-        c.execute("SELECT email, crn FROM subscriptions")
+        c.execute("SELECT id, email, crn, notified FROM subscriptions")
         subs = c.fetchall()
-        conn.close()
 
-        for email, crn in subs:
+        for sub_id, email, crn, notified in subs:
             try:
                 info = get_course_info(crn)
                 seats = info["seats_available"]
-                if seats > 0:
+
+                # If seats are open and we haven’t emailed this user yet
+                if seats > 0 and notified == 0:
                     send_email(crn, email)
+                    c.execute("UPDATE subscriptions SET notified = 1 WHERE id = ?", (sub_id,))
                     print(f"📧 Sent alert to {email} for CRN {crn} ({seats} seats open)")
+
+                # Reset notification if seats drop back down
+                elif seats <= 0 and notified == 1:
+                    c.execute("UPDATE subscriptions SET notified = 0 WHERE id = ?", (sub_id,))
+
             except Exception as e:
                 print(f"❌ Error checking {crn}: {e}")
 
-        time.sleep(300)
+        conn.commit()
+        conn.close()
+        time.sleep(10)
 
 threading.Thread(target=poll_loop, daemon=True).start()
 
