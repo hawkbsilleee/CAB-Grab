@@ -49,6 +49,7 @@ flash==1.0.3
 Flask==2.3.2
 Flask-Login==0.6.3
 flask-sock==0.6.0
+Flask-SQLAlchemy==3.1.1
 flatbuffers==23.5.9
 flexcache==0.3
 flexparser==0.4
@@ -147,7 +148,6 @@ pdftotree==0.5.0
 pexpect==4.8.0
 pickleshare==0.7.5
 pigar==2.1.1
-Pillow==9.3.0
 Pint==0.24.4
 pipreqs==0.4.13
 platformdirs==3.5.0
@@ -158,6 +158,7 @@ prometheus-client==0.16.0
 prompt-toolkit==3.0.38
 protobuf==4.23.0
 psutil==5.9.5
+psycopg2-binary==2.9.10
 ptyprocess==0.7.0
 pure-eval==0.2.2
 pyasn1==0.5.0
@@ -363,6 +364,7 @@ spacy-legacy==3.0.12
 spacy-loggers==1.0.5
 SPARQLWrapper==2.0.0
 split-folders==0.5.1
+SQLAlchemy==2.0.43
 srsly==2.4.8
 stack-data==0.6.2
 tabula-py==2.7.0
