@@ -28,7 +28,7 @@ header {
     text-align: center;
     margin-bottom: 40px;
     padding: 30px 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background:#652A0E;  
     color: white;
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -100,7 +100,8 @@ main {
 
 /* Buttons */
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    /* background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); */
+    background: #652A0E; 
     color: white;
     border: none;
     padding: 14px 28px;
@@ -298,4 +299,76 @@ footer {
         padding: 6px 8px;
         font-size: 0.8rem;
     }
+}
+
+.landing-page {
+  /* background: linear-gradient(135deg, #E4002B 0%, #4E3629 100%); Brown colors */
+  background: #652A0E; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  color: white;
+}
+
+.landing-container {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 3rem;
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  color: #E4002B; /* Brown red */
+  font-weight: bold;
+}
+
+.tagline {
+  margin-top: 0.5rem;
+  font-size: 1.2rem;
+  opacity: 0.9;
+}
+
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 2rem;
+  padding: 0.8rem 1.5rem;
+  background: white;
+  color: #333;
+  border-radius: 4px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.login-btn:hover {
+  transform: scale(1.05);
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 0.5rem;
+}
+
+.flash-container {
+    margin: 1em 0;
+}
+.flash {
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+.flash.success {
+    background-color: #00A86B;
+    color: white;
+}
+.flash.error {
+    background-color: #E4002B;
+    color: white;
 }

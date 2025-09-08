@@ -1,11 +1,18 @@
-from flask import Flask, request, render_template_string, render_template
+from flask import Flask, request, render_template, redirect, url_for, session, flash
 import sqlite3
 import threading
 import time
 from api_interface import get_course_info
 from notifier import send_email
+from authlib.integrations.flask_client import OAuth
+from flask_login import (
+    LoginManager, login_user, logout_user,
+    login_required, UserMixin, current_user
+)
+import os
 
 app = Flask(__name__, template_folder="templates")
+app.secret_key = os.getenv("SECRET_KEY")
 DB = "subscriptions.db"
 
 # --- DB Setup ---
@@ -25,41 +32,124 @@ def init_db():
 
 init_db()
 
+# --- Flask-Login Setup ---
+login_manager = LoginManager()
+login_manager.login_view = "login"
+login_manager.init_app(app)
+
+class User(UserMixin):
+    def __init__(self, id_, email):
+        self.id = id_
+        self.email = email
+
+@login_manager.user_loader
+def load_user(user_id):
+    # User is stored in session, just reload
+    return User(user_id, session.get("email"))
+
+# --- OAuth Setup ---
+oauth = OAuth(app)
+oauth.register(
+    name="google",
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
+)
+
+# --- Auth Routes ---
+@app.route("/login")
+def login():
+    redirect_uri = url_for("authorize", _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+@app.route("/authorize")
+def authorize():
+    token = oauth.google.authorize_access_token()
+    user_info = token["userinfo"]
+    email = user_info["email"]
+
+    # enforce @brown.edu restriction
+    # if not email.endswith("@brown.edu"):
+    #     return "❌ Must use a @brown.edu email", 403
+
+    user = User(id_=email, email=email)
+    login_user(user)
+
+    session["email"] = email
+    return redirect(url_for("index"))
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    session.clear()
+    return redirect(url_for("landing"))
+
 # --- Routes ---
-@app.route("/", methods=["GET", "POST"])
-def index():
+@app.route("/")
+def landing():
+    if current_user.is_authenticated:
+        return redirect(url_for("index"))
+    return render_template("landing.html")
+
+@app.route("/dashboard", methods=["GET", "POST"])
+@login_required
+def dashboard():
     if request.method == "POST":
-        email = request.form["email"]
-        crns = request.form["crns"].split(",")
+        crns = request.form["crn"].split(",")
         
         conn = sqlite3.connect(DB)
         c = conn.cursor()
-        
-        # Insert each CRN for the email
+        added = []
+        failed = []
+
         for crn in crns:
             crn = crn.strip()
-            if crn:  # Only insert if CRN is not empty after stripping
-                c.execute("INSERT INTO subscriptions (email, crn) VALUES (?, ?)", (email.strip(), crn))
-        
+            if not crn:
+                continue
+            try:
+                # Try fetching course info to validate CRN
+                info = get_course_info(crn)
+                if info and "seats_available" in info:
+                    c.execute("INSERT INTO subscriptions (email, crn) VALUES (?, ?)", (current_user.email, crn))
+                    added.append(crn)
+                else:
+                    failed.append(crn)
+            except Exception as e:
+                failed.append(crn)
+
         conn.commit()
         conn.close()
-        
-        # Flash a success message
-        flash(f"✅ You're now tracking {len([c.strip() for c in crns if c.strip()])} course(s)!", "success")
-        return redirect(url_for('index'))
-    
-    # GET request - fetch and display existing subscriptions
+
+        # Optional: flash messages (requires enabling Flask's flash/secret key)
+        if added:
+            # print(f"✅ Added valid CRNs: {', '.join(added)}")
+            flash(f"Added valid CRNs: {', '.join(added)}", "success")
+        if failed:
+            # print(f"❌ Invalid CRNs skipped: {', '.join(failed)}")
+            flash(f"Invalid CRNs skipped: {', '.join(failed)}", "error")
+
+        return redirect(url_for("dashboard"))
+
+    # GET request
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    
-    # Fetch all subscriptions with basic info
-    # Adjust this query based on your actual table structure
-    c.execute("SELECT email, crn, datetime('now') FROM subscriptions ORDER BY rowid DESC")
+    c.execute("SELECT id, crn, datetime('now') FROM subscriptions WHERE email = ?", (current_user.email,))
     subscriptions = c.fetchall()
-    
     conn.close()
-    
-    return render_template('index.html', subscriptions=subscriptions)
+
+    return render_template("index.html", subscriptions=subscriptions)
+
+@app.route("/delete/<int:sub_id>", methods=["POST"])
+@login_required
+def delete_subscription(sub_id):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("DELETE FROM subscriptions WHERE id = ? AND email = ?", (sub_id, current_user.email))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("dashboard"))
 
 # --- Background Poller ---
 def poll_loop():
@@ -74,16 +164,14 @@ def poll_loop():
             try:
                 info = get_course_info(crn)
                 seats = info["seats_available"]
-
-                if seats > 0:  # only notify if seats are open
+                if seats > 0:
                     send_email(crn, email)
                     print(f"📧 Sent alert to {email} for CRN {crn} ({seats} seats open)")
             except Exception as e:
                 print(f"❌ Error checking {crn}: {e}")
 
-        time.sleep(60)  # poll every 60s (adjust if needed)
+        time.sleep(300)
 
-# --- Start poller in background ---
 threading.Thread(target=poll_loop, daemon=True).start()
 
 if __name__ == "__main__":
