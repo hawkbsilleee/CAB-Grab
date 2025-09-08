@@ -163,6 +163,7 @@ def poll_loop():
         for sub_id, email, crn, notified in subs:
             try:
                 info = get_course_info(crn)
+                time.sleep(2)
                 seats = info["seats_available"]
 
                 # If seats are open and we haven’t emailed this user yet
